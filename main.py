@@ -97,14 +97,21 @@ async def submit_cpp(file: UploadFile = File(...)) -> SubmissionResponse:
     try:
         with open(source_path, "wb") as target:
             shutil.copyfileobj(file.file, target)
-
-        compile_proc = subprocess.run(
-            ["g++", source_path, "-O2", "-std=c++17", "-o", binary_path],
-            capture_output=True,
-            text=True,
-            timeout=10,
-            check=False,
-        )
+        try:
+            compile_proc = subprocess.run(
+                ["g++", source_path, "-O2", "-std=c++17", "-o", binary_path],
+                capture_output=True,
+                text=True,
+                timeout=40,  # Increased
+                check=False,
+            )
+        except subprocess.TimeoutExpired:
+            return SubmissionResponse(
+                status="compilation_error",
+                compile_stderr="Compilation timed out. Server CPU is likely busy.",
+                compile_stdout="",
+                results=[],
+            )
 
         if compile_proc.returncode != 0:
             return SubmissionResponse(
